@@ -1,11 +1,16 @@
 <template>
-  <button class="btn-component-wrap" @click="onClick">
+  <button class="btn-component-wrap" @click="onClick" :disabled="disabled">
     <slot></slot>
   </button>
 </template>
 <script>
 export default {
-  props: {},
+  props: {
+    disabled: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {}
   },
@@ -30,5 +35,8 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   margin: 0 6px 0 0;
+  &:disabled {
+    cursor: not-allowed;
+  }
 }
 </style>

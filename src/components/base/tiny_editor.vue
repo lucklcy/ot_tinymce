@@ -2,8 +2,15 @@
   <div class="tiny-mce-editor-wrap">
     <editor v-model="content" :init="init" :id="id"></editor>
     <div class="operation">
-      <Btn @click="updateContent">auto update : {{ `${countDown.updateContent}s` }}</Btn>
-      <Btn @click="showBookMark">bookmark : {{ `${countDown.showBookMark}s` }}</Btn>
+      <div class="set-cursor">
+        <input type="text" v-model="position" />
+        <Btn @click="setCursorAtAsync">setCursorAt</Btn>
+        <Btn @click="getCursorAsync">getCursor</Btn>
+        <span class="text">
+          current cursor position: <i>{{ currentCursorPosition }}</i>
+        </span>
+      </div>
+      <Btn :disabled="true">countDown : {{ `${countDown}s` }}</Btn>
     </div>
   </div>
 </template>
@@ -44,7 +51,7 @@ import 'tinymce/plugins/imagetools'
 import 'tinymce/plugins/autosave'
 import 'tinymce/plugins/autoresize'
 
-const INITIAL_COUNT_DOWN = 8
+const INITIAL_COUNT_DOWN = 5
 export default {
   props: {
     id: {
@@ -94,11 +101,11 @@ export default {
           success(img)
         }
       },
-      content: '',
-      countDown: {
-        updateContent: INITIAL_COUNT_DOWN,
-        showBookMark: INITIAL_COUNT_DOWN
-      }
+      content:
+        '<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong>近日</strong></span>，教育部官网公布了<strong><span style="color: #34495e;">《对十三届全国人大四次会议<span style="text-decoration: underline;"><em>第4114号</em></span>建议的答复》</span></strong>，其中提到，新一轮&ldquo;双一流&rdquo;建设，按照&ldquo;以需求为导向、<span style="color: #003a54;">以学科为基础</span>、以比选为手段、确保平稳推进&rdquo;的路径进行调整认定，<strong><span style="color: #e03e2d;">不搞平衡照顾</span></strong>。</p>\n<p>&nbsp; &nbsp; &nbsp; <em><span style="color: #003a54; font-size: 18px;"><strong>早在去年9月27日</strong></span></em>，教育部官网在《关于政协十三届全国委员会第三次会议第4829号（教育类377号）提案答复》中就已明确，&ldquo;双一流&rdquo;首轮建设2020年结束，将根据期末建设成效评价结果等情况，坚持质量、水平与需求相统一，动态调整下一轮建设范围。<strong><span style="color: #e03e2d;">不搞全覆盖，不搞终身制，不搞安排照顾</span></strong>。</p>\n<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong><span style="color: #34495e;">上述文件中指出</span></strong></span>，党中央、国务院提出实施&ldquo;双一流&rdquo;建设战略，将<strong><span style="color: #e67e23;">&ldquo;211工程&rdquo;、&ldquo;985工程&rdquo;</span></strong>、&ldquo;高等学校创新能力提升计划&rdquo;等重点建设项目统筹纳入&ldquo;双一流&rdquo;建设，<span style="text-decoration: underline; color: #e67e23;"><em>打破建设身份固化、竞争缺失的弊端、建立分类建设特色化质量发展的新建设模式</em></span>。</p>\n<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong><span style="color: #34495e;">文件同时提出</span></strong></span>：<strong><span style="color: #843fa1;">将在科技平台基地建设布局中加大对地方高校的倾斜</span></strong>。邀请地方教育行政主管部门和部分地方高校参加全国高校科技工作会、高校科技工作专题培训；支持地方高校根据自身发展需求，<span style="color: #3598db;"><em>整合创新资源，建设各类国家级、省部级</em></span>、<strong><span style="color: #169179;">校级科技创新平台</span></strong>。</p>\n<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong>将通过部省合建</strong></span>、对口支援、专项工作等多种途径加大对河北省学科建设的指导，支持其积极服务区域经济社会发展，增强优势特色。进一步发挥京津冀高校科技创新整体优势，<strong><span style="background-color: #c2e0f4; color: #843fa1; font-size: 18px;">鼓励<em>京津冀高校建立科</em>研合作关系</span></strong>。</p>',
+      countDown: INITIAL_COUNT_DOWN,
+      position: '',
+      currentCursorPosition: -1
     }
   },
   components: {
@@ -109,11 +116,11 @@ export default {
   methods: {
     updateContent() {
       let { id, countDown } = this
-      if (--countDown.updateContent > 0) {
-        Object.assign(this.countDown, countDown)
+      if (--countDown > 0) {
+        Object.assign(this, { countDown })
         setTimeout(this.updateContent, 1000)
       } else {
-        Object.assign(this.countDown, { updateContent: INITIAL_COUNT_DOWN })
+        Object.assign(this, { countDown })
         const instance = tinymce.get(id)
         const bookmark = instance.selection.getBookmark(2)
         console.log('bookmark', bookmark)
@@ -125,22 +132,93 @@ export default {
         instance.selection.moveToBookmark(bookmark)
       }
     },
-    showBookMark() {
-      let { id, countDown } = this
-      if (--countDown.showBookMark > 0) {
-        Object.assign(this.countDown, countDown)
-        setTimeout(this.showBookMark, 1000)
+    util() {
+      const instance = tinymce.get(this.id)
+      const root = instance.dom.getRoot()
+      let TreeWalker = tinymce.dom.TreeWalker
+      // const { instance, root, TreeWalker } = util
+      return { instance, root, TreeWalker }
+    },
+    countDownReset() {
+      Object.assign(this, { countDown: INITIAL_COUNT_DOWN })
+    },
+    setCursorAt() {
+      let { id, position } = this
+      position = parseInt(position)
+      const instance = tinymce.get(id)
+      const root = instance.dom.getRoot()
+      let TreeWalker = tinymce.dom.TreeWalker
+      let walker = new TreeWalker(root)
+      const rootTextContent = root.textContent
+      console.log('rootTextContent.length:', rootTextContent.length, ' --- position:', position)
+      if (rootTextContent.length < position) position = rootTextContent.length
+      let [continueFlag, tempTextContent, prevPosition] = [true, '', 0]
+      do {
+        let currnetNode = walker.current()
+        let offset = 0
+        if (currnetNode.nodeName === '#text') {
+          tempTextContent += currnetNode.textContent
+          if (tempTextContent.length >= position) {
+            if (tempTextContent.length > position) offset = position - prevPosition
+            console.log('tempTextContent:', tempTextContent)
+            console.log('currnetNode:', currnetNode, ' --- tempTextContent.length:', tempTextContent.length, ' --- offset:', offset)
+            instance.selection.setCursorLocation(currnetNode, offset)
+            continueFlag = false
+          } else {
+            prevPosition = tempTextContent.length
+          }
+        }
+      } while (walker.next() && continueFlag)
+      this.countDownReset()
+    },
+    setCursorAtAsync() {
+      let { countDown } = this
+      if (--countDown > 0) {
+        Object.assign(this, { countDown })
+        setTimeout(this.setCursorAtAsync, 1000)
       } else {
-        Object.assign(this.countDown, { showBookMark: INITIAL_COUNT_DOWN })
-        const instance = tinymce.get(id)
-        const bookmark = instance.selection.getBookmark(2)
-        console.log('bookmark', bookmark)
+        Object.assign(this, { countDown })
+        this.setCursorAt()
+      }
+    },
+    getCursor() {
+      let { id } = this
+      const instance = tinymce.get(id)
+      const root = instance.dom.getRoot()
+      let TreeWalker = tinymce.dom.TreeWalker
+      let walker = new TreeWalker(root)
+      let range = instance.selection.getRng()
+      let { startContainer, startOffset } = range
+      console.log('startContainer:', startContainer, ' --- startOffset:', startOffset)
+      let [continueFlag, tempTextContent] = [true, '']
+      do {
+        let currnetNode = walker.current()
+        if (currnetNode === startContainer) {
+          let currentCursorPosition = tempTextContent.length + startOffset
+          console.log('currnetNode', currnetNode, 'currentCursorPosition:', currentCursorPosition)
+          Object.assign(this, { currentCursorPosition })
+          continueFlag = false
+        } else if (currnetNode.nodeName === '#text') {
+          tempTextContent += currnetNode.textContent
+        }
+      } while (walker.next() && continueFlag)
+      this.countDownReset()
+    },
+    getCursorAsync() {
+      let { countDown } = this
+      if (--countDown > 0) {
+        Object.assign(this, { countDown })
+        setTimeout(this.getCursorAsync, 1000)
+      } else {
+        Object.assign(this, { countDown })
+        this.getCursor()
       }
     }
   },
   created() {},
   mounted() {
     tinymce.init({}) // 这里传个空对象就可以了
+    setTimeout(() => (window.util = this.util()), 2000)
   }
 }
 </script>
@@ -150,6 +228,33 @@ export default {
   .operation {
     padding: 20px 0;
     .setFlexPos(row, center, center);
+    .set-cursor {
+      margin: 20px;
+      border-right: 1px dashed #666;
+      .setFlexPos(row, center, center);
+      padding: 0 12px 0 0;
+      input {
+        margin: 0 12px 0 0;
+        border: 1px solid blue;
+        display: inline-block;
+        width: 60px;
+        padding: 4px 10px;
+        color: rgb(54, 54, 54);
+        font-size: 14px;
+        border-radius: 4px;
+      }
+      .text {
+        color: rgb(54, 54, 54);
+        i {
+          margin: 0 8px;
+          color: orange;
+          display: inline-block;
+          font-style: normal;
+          border-bottom: 1px solid orange;
+          padding: 2px 0;
+        }
+      }
+    }
   }
 }
 </style>

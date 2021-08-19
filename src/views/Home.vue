@@ -1,18 +1,25 @@
 <template>
-  <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div class="home-wrap">
+    <Editor id="imce"></Editor>
   </div>
 </template>
 
 <script>
-// @ is an alias to /src
-import HelloWorld from '@/components/HelloWorld.vue'
-
+import Editor from '~/base/tiny_editor'
 export default {
   name: 'Home',
-  components: {
-    HelloWorld
+  components: { Editor },
+  data() {
+    return {}
+  },
+  mounted() {
+    tinymce.init({}) // 这里传个空对象就可以了
   }
 }
 </script>
+<style lang="less" scoped>
+.home-wrap {
+  .setSize(100%, 100%);
+  padding: 20px;
+}
+</style>

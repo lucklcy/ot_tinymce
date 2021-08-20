@@ -248,9 +248,9 @@ export default {
   .custom-cursor {
     position: absolute;
     z-index: 2;
-    height: 18px;
+    height: 20px;
     width: 3px;
-    background-color: plum;
+    background-color: blue;
     border-radius: 4px;
     top: 10px;
     left: 8px;

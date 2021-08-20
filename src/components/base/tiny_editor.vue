@@ -1,5 +1,6 @@
 <template>
   <div class="tiny-mce-editor-wrap">
+    <div class="custom-cursor" :style="customCursor"></div>
     <editor v-model="content" :init="init" :id="id"></editor>
     <div class="operation">
       <div class="set-cursor">
@@ -53,6 +54,7 @@ import 'tinymce/plugins/autoresize'
 
 const INITIAL_COUNT_DOWN = 5
 export default {
+  name: 'self-tinymce',
   props: {
     id: {
       type: String,
@@ -105,7 +107,8 @@ export default {
         '<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong>近日</strong></span>，教育部官网公布了<strong><span style="color: #34495e;">《对十三届全国人大四次会议<span style="text-decoration: underline;"><em>第4114号</em></span>建议的答复》</span></strong>，其中提到，新一轮&ldquo;双一流&rdquo;建设，按照&ldquo;以需求为导向、<span style="color: #003a54;">以学科为基础</span>、以比选为手段、确保平稳推进&rdquo;的路径进行调整认定，<strong><span style="color: #e03e2d;">不搞平衡照顾</span></strong>。</p>\n<p>&nbsp; &nbsp; &nbsp; <em><span style="color: #003a54; font-size: 18px;"><strong>早在去年9月27日</strong></span></em>，教育部官网在《关于政协十三届全国委员会第三次会议第4829号（教育类377号）提案答复》中就已明确，&ldquo;双一流&rdquo;首轮建设2020年结束，将根据期末建设成效评价结果等情况，坚持质量、水平与需求相统一，动态调整下一轮建设范围。<strong><span style="color: #e03e2d;">不搞全覆盖，不搞终身制，不搞安排照顾</span></strong>。</p>\n<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong><span style="color: #34495e;">上述文件中指出</span></strong></span>，党中央、国务院提出实施&ldquo;双一流&rdquo;建设战略，将<strong><span style="color: #e67e23;">&ldquo;211工程&rdquo;、&ldquo;985工程&rdquo;</span></strong>、&ldquo;高等学校创新能力提升计划&rdquo;等重点建设项目统筹纳入&ldquo;双一流&rdquo;建设，<span style="text-decoration: underline; color: #e67e23;"><em>打破建设身份固化、竞争缺失的弊端、建立分类建设特色化质量发展的新建设模式</em></span>。</p>\n<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong><span style="color: #34495e;">文件同时提出</span></strong></span>：<strong><span style="color: #843fa1;">将在科技平台基地建设布局中加大对地方高校的倾斜</span></strong>。邀请地方教育行政主管部门和部分地方高校参加全国高校科技工作会、高校科技工作专题培训；支持地方高校根据自身发展需求，<span style="color: #3598db;"><em>整合创新资源，建设各类国家级、省部级</em></span>、<strong><span style="color: #169179;">校级科技创新平台</span></strong>。</p>\n<p>&nbsp; &nbsp; &nbsp; <span style="font-size: 18px;"><strong>将通过部省合建</strong></span>、对口支援、专项工作等多种途径加大对河北省学科建设的指导，支持其积极服务区域经济社会发展，增强优势特色。进一步发挥京津冀高校科技创新整体优势，<strong><span style="background-color: #c2e0f4; color: #843fa1; font-size: 18px;">鼓励<em>京津冀高校建立科</em>研合作关系</span></strong>。</p>',
       countDown: INITIAL_COUNT_DOWN,
       position: '',
-      currentCursorPosition: -1
+      currentCursorPosition: -1,
+      customCursor: {}
     }
   },
   components: {
@@ -189,17 +192,33 @@ export default {
       let walker = new TreeWalker(root)
       let range = instance.selection.getRng()
       let { startContainer, startOffset } = range
+      console.log('current range:', range)
       console.log('startContainer:', startContainer, ' --- startOffset:', startOffset)
-      let [continueFlag, tempTextContent] = [true, '']
+      let [continueFlag, tempTextContent, prevNode] = [true, '', null]
       do {
         let currnetNode = walker.current()
         if (currnetNode === startContainer) {
+          if (prevNode) {
+            let prevNodeRect = instance.dom.getRect(prevNode)
+            console.log('prevNode:', prevNode)
+            console.log('prevNodeRect:', prevNodeRect)
+            Object.assign(this, {
+              customCursor: {
+                left: `${prevNodeRect.x + prevNodeRect.w + 16 * startContainer.startOffset}px`,
+                top: `${prevNodeRect.y + 117 + 4}px`
+              }
+            })
+          }
           let currentCursorPosition = tempTextContent.length + startOffset
           console.log('currnetNode', currnetNode, 'currentCursorPosition:', currentCursorPosition)
           Object.assign(this, { currentCursorPosition })
           continueFlag = false
-        } else if (currnetNode.nodeName === '#text') {
-          tempTextContent += currnetNode.textContent
+        } else {
+          if (currnetNode.nodeName === '#text') {
+            tempTextContent += currnetNode.textContent
+          } else {
+            prevNode = currnetNode
+          }
         }
       } while (walker.next() && continueFlag)
       this.countDownReset()
@@ -224,7 +243,31 @@ export default {
 </script>
 <style lang="less" scoped>
 .tiny-mce-editor-wrap {
+  position: relative;
   background-color: #fff;
+  .custom-cursor {
+    position: absolute;
+    z-index: 2;
+    height: 18px;
+    width: 3px;
+    background-color: plum;
+    border-radius: 4px;
+    top: 10px;
+    left: 8px;
+    @keyframes step-run {
+      0% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    transform: scalex(0.5);
+    animation: step-run 1s steps(1, end) 0s infinite backwards;
+  }
   .operation {
     padding: 20px 0;
     .setFlexPos(row, center, center);
